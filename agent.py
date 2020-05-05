@@ -1,6 +1,6 @@
 import json, sys, time, datetime as dt
 from threading import Thread
-import msm, mrm, uts 
+import cas, mrm 
 from collections import defaultdict
 
 # log = open("agent.log", "a")
@@ -27,6 +27,8 @@ TRUST_LEVEL = 2
     # 2 - агент полностью принимает решения
 DISPATCHPROC = defaultdict(list)
 QUEUEPROCS = defaultdict(list)
+SUBSCRIPTIONS = ('IACM', 'IACN', 'IAPL', 'IAWC')
+DATE = dt.datetime.now().strftime("%d-%m-%Y")
 
 # Коды агентов в системе
 # IACM - коммуникатор
@@ -37,34 +39,46 @@ QUEUEPROCS = defaultdict(list)
 
 #   Обработка неопознанных сообщений 
 def unrecognizedCommand(id):
-    msm.SendMessage(SELFID, 'IACM', 'system', 'NONETYPEMSG FROM '+id, NOPARAMS)
+    cas.SendMessage(SELFID, 'IACM', 'system', 'NONETYPEMSG FROM '+id, NOPARAMS)
     print('WARNING: Не удалось распознать команду', id)
 
 #   Изменение статуса агента
 def changeStatus(status):
     global STATUS 
     STATUS = status
-    if STATUS == 'WORK':
-        msm.SendMessage(SELFID, 'IACM', 'system', 'IADC '+status, NOPARAMS)
     print('SYSTEM: Агент переведен в режим:', STATUS)
+    # действия которые вызываются после перевода агента в статус WORK 
+    if STATUS == 'WORK':
+        cas.SendMessage(SELFID, 'IACM', 'system', 'IADC '+status, NOPARAMS)
+        time.sleep(3)
+        subscribeOnAgents()
+        time.sleep(3)
+        requestListWC()
+        time.sleep(3)
+        requestSchedule()
 
 #   Отображение статуса
 def sendStatus():
     while True:
-        msm.SendMessage(SELFID, 'IACM', 'system', 'STATUS '+ STATUS, NOPARAMS)
+        cas.SendMessage(SELFID, 'IACM', 'system', 'STATUS '+ STATUS, NOPARAMS)
         print('INFO: Статус агента', STATUS)
         time.sleep(TIMING_STATUS)
 
+#   Подписка на нужных агентов
+def subscribeOnAgents():
+    cas.SendMessage(SELFID, 'IACM', 'systen', 'SUBSCRIBE', SUBSCRIPTIONS)
+    print('INFO: Агент подписывается на:', SUBSCRIPTIONS)
+
 #   Запрос расписания
 def requestSchedule():
-    msm.SendMessage(SELFID, 'IAPL', 'manage', 'MAKE SCHEDULE', dt.datetime.date)
+    cas.SendMessage(SELFID, 'IAPL', 'manage', 'MAKE SCHEDULE', DATE)
     print('INFO: Запрос расписания')
 
 #   Получение расписания
 def loadSchedule(schedule):
     global SCHEDULE
     SCHEDULE = schedule
-    print('INFO: Расписание получено', SCHEDULE, len(SCHEDULE))
+    print('INFO: Расписание получено', SCHEDULE)
     if len(SCHEDULE) != 0:
         startProcThread = Thread(target=startWorkProc)
         startProcThread.start()
@@ -73,7 +87,7 @@ def loadSchedule(schedule):
 
 #   Запрос списка обслуживаемых РЦ
 def requestListWC():
-    msm.SendMessage(SELFID, 'IAPL', 'manage', 'GET LIST WC', dt.datetime.date)
+    cas.SendMessage(SELFID, 'IAPL', 'manage', 'GET LIST WC', DATE)
     print('INFO: Запрос списка обслуживаемых РЦ')
 
 #   Получение списка обслуживаемых РЦ
@@ -84,7 +98,7 @@ def loadListWC(listwc):
 
 #   Выдача команды для РЦ
 def sendCommandToWC(idWC, procname, command):
-    msm.SendMessage(SELFID, 'IAWC', 'control', command, 'IDWC '+str(idWC)+' PROCNAME '+procname)
+    cas.SendMessage(SELFID, 'IAWC', 'control', command, 'IDWC '+str(idWC)+' PROCNAME '+procname)
     print('MANAGEWC: Выдача команды',command, procname,'для РЦ', idWC)
 
 #   Запуск работы процессов
@@ -145,11 +159,11 @@ def manageWc(msg, params):
 
 #   Запуск тестирования
 def testSystem():
-    uts.startTest()
+    #uts.startTest()
     print('INFO: Производится тестирование работы агента')
 
 #   Старт агента
-def startAgent():
+def startAgent(agent):
     print('SYSTEM: Агент запускается...')
     try:
         if UNITTEST:
@@ -159,6 +173,7 @@ def startAgent():
         statusThread = Thread(target=sendStatus)
         time.sleep(2)
         print('SYSTEM: Агент успешно запустился!')
+        cas.AGENT = agent
         statusThread.start()
     except:
         print('ERROR: Агенту не удалось запуститься!')

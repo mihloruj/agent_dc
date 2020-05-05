@@ -1,0 +1,1 @@
+[{"id": 1, "nametest":"test1", "commands":[["msg\\in\\msg_start_work.json", 3], ["msg\\in\\msg_list_wc.json", 5], ["msg\\in\\msg_scheduleNew.json", 5]]}]
