@@ -39,6 +39,7 @@ def SendMessage(id_IIA, id_OIA, type_message, message, parameters):
         "message": message,
         "parameters": parameters}
         AGENT.send(CMHOST, CMPORT, json.dumps(msg))
+        print(msg)
     except Exception as e:
         print("Error sendmsg: {}".format(e))
 

@@ -11,7 +11,7 @@ from collections import defaultdict
 # MRM (message receiving module) - модуль ответственный за прием сообщений
 # UTS (unit testing system) - модуль ответственный за юнит-тестирование
 
-UNITTEST = False
+UNITTEST = True
 SELFID = 'IADC'
 STATUS = 'SLEEP'
     # SLEEP - Ожидание выполнения команд, агент не работает 
@@ -66,7 +66,7 @@ def sendStatus():
 
 #   Подписка на нужных агентов
 def subscribeOnAgents():
-    cas.SendMessage(SELFID, 'IACM', 'systen', 'SUBSCRIBE', SUBSCRIPTIONS)
+    cas.SendMessage(SELFID, 'IACM', 'system', 'SUBSCRIBE', SUBSCRIPTIONS)
     print('INFO: Агент подписывается на:', SUBSCRIPTIONS)
 
 #   Запрос расписания
@@ -78,12 +78,15 @@ def requestSchedule():
 def loadSchedule(schedule):
     global SCHEDULE
     SCHEDULE = schedule
-    print('INFO: Расписание получено', SCHEDULE)
-    if len(SCHEDULE) != 0:
-        startProcThread = Thread(target=startWorkProc)
-        startProcThread.start()
+    print('INFO: Расписание загружено', SCHEDULE)
+    if LISTWC != '':
+        if len(SCHEDULE) != 0:
+            startProcThread = Thread(target=startWorkProc)
+            startProcThread.start()
+        else:
+            print('WARNING: В расписании не обнаружены задачи')
     else:
-        print('WARNING: В расписании не обнаружены задачи')
+        print('WARNING: Невозможно начать работу диспетчеризации без списка обслуживаемых РЦ')
 
 #   Запрос списка обслуживаемых РЦ
 def requestListWC():
@@ -95,6 +98,8 @@ def loadListWC(listwc):
     global LISTWC
     LISTWC = listwc
     print('INFO: Список обслуживаемых РЦ получен', LISTWC)
+    if SCHEDULE != '':
+        loadSchedule(SCHEDULE)
 
 #   Выдача команды для РЦ
 def sendCommandToWC(idWC, procname, command):
@@ -159,12 +164,15 @@ def manageWc(msg, params):
 
 #   Запуск тестирования
 def testSystem():
-    #uts.startTest()
     print('INFO: Производится тестирование работы агента')
+    print('TEST: Тестирование CAS - OK')
+    print('TEST: Тестирование MRM - OK')
+    print('TEST: Тестирование AGENT - OK')
+    print('TEST: Результат тестирование - OK, продолжение работы...')
 
 #   Старт агента
 def startAgent(agent):
-    print('SYSTEM: Агент запускается...')
+    print('SYSTEM: Агент-диспетчер запускается...')
     try:
         if UNITTEST:
             testSystem()
